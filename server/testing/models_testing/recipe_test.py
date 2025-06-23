@@ -2,7 +2,7 @@ import pytest
 from sqlalchemy.exc import IntegrityError
 
 from app import app
-from models import db, Recipe
+from server.models import db, Recipe, User
 
 class TestRecipe:
     '''User in models.py'''
@@ -13,6 +13,12 @@ class TestRecipe:
         with app.app_context():
 
             Recipe.query.delete()
+            db.session.commit()
+
+            # Create a user to assign user_id
+            user = User(username="TestUser")
+            user.password_hash = "testpassword"
+            db.session.add(user)
             db.session.commit()
 
             recipe = Recipe(
@@ -26,6 +32,7 @@ class TestRecipe:
                         """ smallness northward situation few her certainty""" + \
                         """ something.""",
                     minutes_to_complete=60,
+                    user_id=user.id
                     )
 
             db.session.add(recipe)
@@ -52,7 +59,13 @@ class TestRecipe:
             Recipe.query.delete()
             db.session.commit()
 
-            recipe = Recipe()
+            # Create a user to assign user_id
+            user = User(username="TestUser2")
+            user.password_hash = "testpassword2"
+            db.session.add(user)
+            db.session.commit()
+
+            recipe = Recipe(user_id=user.id)
             
             with pytest.raises(IntegrityError):
                 db.session.add(recipe)
@@ -64,11 +77,18 @@ class TestRecipe:
             Recipe.query.delete()
             db.session.commit()
 
+            # Create a user to assign user_id
+            user = User(username="TestUser3")
+            user.password_hash = "testpassword3"
+            db.session.add(user)
+            db.session.commit()
+
             '''must raise either a sqlalchemy.exc.IntegrityError with constraints or a custom validation ValueError'''
             with pytest.raises( (IntegrityError, ValueError) ):
                 recipe = Recipe(
                     title="Generic Ham",
-                    instructions="idk lol")
+                    instructions="idk lol",
+                    user_id=user.id)
                 db.session.add(recipe)
                 db.session.commit()
 

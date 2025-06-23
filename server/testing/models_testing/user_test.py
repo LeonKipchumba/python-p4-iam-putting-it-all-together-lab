@@ -2,7 +2,7 @@ from sqlalchemy.exc import IntegrityError
 import pytest
 
 from app import app
-from models import db, User, Recipe
+from server.models import db, User, Recipe
 
 class TestUser:
     '''User in models.py'''
@@ -63,6 +63,7 @@ class TestUser:
             db.session.commit()
 
             user = User()
+            user.password_hash = "testpassword"
             with pytest.raises(IntegrityError):
                 db.session.add(user)
                 db.session.commit()
@@ -76,10 +77,15 @@ class TestUser:
             db.session.commit()
 
             user_1 = User(username="Ben")
+            user_1.password_hash = "password1"
             user_2 = User(username="Ben")
+            user_2.password_hash = "password2"
+
+            db.session.add(user_1)
+            db.session.commit()
 
             with pytest.raises(IntegrityError):
-                db.session.add_all([user_1, user_2])
+                db.session.add(user_2)
                 db.session.commit()
 
     def test_has_list_of_recipes(self):
@@ -88,9 +94,14 @@ class TestUser:
         with app.app_context():
 
             User.query.delete()
+            Recipe.query.delete()
             db.session.commit()
 
             user = User(username="Prabhdip")
+            user.password_hash = "testpassword"
+
+            db.session.add(user)
+            db.session.commit()
 
             recipe_1 = Recipe(
                 title="Delicious Shed Ham",
@@ -103,6 +114,7 @@ class TestUser:
                     """ smallness northward situation few her certainty""" + \
                     """ something.""",
                 minutes_to_complete=60,
+                user_id=user.id
                 )
             recipe_2 = Recipe(
                 title="Hasty Party Ham",
@@ -113,19 +125,15 @@ class TestUser:
                              """ unpacked be advanced at. Confined in declared""" + \
                              """ marianne is vicinity.""",
                 minutes_to_complete=30,
+                user_id=user.id
                 )
 
             user.recipes.append(recipe_1)
             user.recipes.append(recipe_2)
 
-            db.session.add_all([user, recipe_1, recipe_2])
+            db.session.add_all([recipe_1, recipe_2])
             db.session.commit()
 
-            # check that all were created in db
-            assert(user.id)
-            assert(recipe_1.id)
-            assert(recipe_2.id)
+            created_user = User.query.filter(User.username == "Prabhdip").first()
 
-            # check that recipes were saved to user
-            assert(recipe_1 in user.recipes)
-            assert(recipe_2 in user.recipes)
+            assert len(created_user.recipes) == 2
